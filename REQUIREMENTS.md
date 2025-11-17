@@ -23,6 +23,7 @@ There are three types of objects that can be created
 
 Requirements for all objects
 - Must snap to grid
+- Must be selectable
 - Creation non-text object should drag-create, not double click-create
     - When creating the size of the object the user will mouse-down
     - Releasing the mouse will create the object
@@ -37,13 +38,14 @@ Requirements for arrow
 
 Requirements for rectangle
 - When creating the object
-    - The size will be shown on each of the opposite edge
+    - The size will be shown on each of the TWO opposite edge
         - e.g. The bottom-right corner is being decided
             - The length will be shown on the top edge (because it is opposite)
             - The width will be shown on the left edge (because it is opposite)
         - e.g. The top-left corner is being decided
             - The length will be shown on the bottom edge (because it is opposite)
             - The width will be shown on the right edge (because it is opposite)
+    - The size is shown as an integer (no px)
 - There are FIVE text fields for the rectangle
     - Middle
     - Top edge

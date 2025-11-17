@@ -120,6 +120,11 @@ function updateToolbar() {
   toolButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === state.mode);
   });
+
+  const hint = document.getElementById("hint");
+  if (hint) {
+    hint.style.display = state.mode === "select" ? "block" : "none";
+  }
 }
 
 function handlePointerDown(event) {
@@ -274,7 +279,11 @@ function updateMeasurementWithPending() {
   const y = Math.min(start.y, current.y);
   const width = Math.abs(current.x - start.x);
   const height = Math.abs(current.y - start.y);
-  state.measurement = { x, y, width, height };
+
+  const draggingRight = current.x > start.x;
+  const draggingDown = current.y > start.y;
+
+  state.measurement = { x, y, width, height, draggingRight, draggingDown };
 }
 
 function startArrowCreation(point, event) {
@@ -414,7 +423,10 @@ function resizeRectangle(point) {
   shape.width = width;
   shape.height = height;
 
-  state.measurement = { x, y, width, height };
+  const draggingRight = handle.includes("right");
+  const draggingDown = handle.includes("bottom");
+
+  state.measurement = { x, y, width, height, draggingRight, draggingDown };
   render();
 }
 
@@ -561,6 +573,14 @@ function render() {
     }
   });
 
+  if (state.mode === "arrow" || state.pendingCreation?.tool === "arrow") {
+    state.shapes.forEach((shape) => {
+      if (shape.type === "rectangle") {
+        renderRectangleSnapPoints(shape);
+      }
+    });
+  }
+
   if (state.selection) {
     const shape = findShape(state.selection.id);
     if (shape && shape.type === "rectangle") {
@@ -687,6 +707,29 @@ function renderText(shape) {
   shapesLayer.append(group);
 }
 
+function renderRectangleSnapPoints(rect) {
+  const snapPoints = [
+    { x: rect.x, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y },
+    { x: rect.x, y: rect.y + rect.height },
+    { x: rect.x + rect.width, y: rect.y + rect.height },
+    { x: rect.x + rect.width / 2, y: rect.y },
+    { x: rect.x + rect.width / 2, y: rect.y + rect.height },
+    { x: rect.x, y: rect.y + rect.height / 2 },
+    { x: rect.x + rect.width, y: rect.y + rect.height / 2 },
+  ];
+
+  snapPoints.forEach(({ x, y }) => {
+    const circle = createSvgElement("circle", {
+      cx: x,
+      cy: y,
+      r: 4,
+      class: "snap-point",
+    });
+    handleLayer.append(circle);
+  });
+}
+
 function renderRectangleHandles(rect) {
   const corners = [
     { x: rect.x, y: rect.y, handle: "corner-top-left" },
@@ -793,42 +836,48 @@ function renderPending() {
   }
 }
 
-function renderMeasurement({ x, y, width, height }) {
-  const widthTextTop = createSvgElement("text", {
-    x: x + width / 2,
-    y: y - 6,
-    class: "measurement-text",
-    "text-anchor": "middle",
-  });
-  widthTextTop.textContent = `${width}px`;
+function renderMeasurement({ x, y, width, height, draggingRight, draggingDown }) {
+  if (draggingDown) {
+    const widthTextTop = createSvgElement("text", {
+      x: x + width / 2,
+      y: y - 6,
+      class: "measurement-text",
+      "text-anchor": "middle",
+    });
+    widthTextTop.textContent = `${width}`;
+    overlayLayer.append(widthTextTop);
+  } else {
+    const widthTextBottom = createSvgElement("text", {
+      x: x + width / 2,
+      y: y + height + 14,
+      class: "measurement-text",
+      "text-anchor": "middle",
+    });
+    widthTextBottom.textContent = `${width}`;
+    overlayLayer.append(widthTextBottom);
+  }
 
-  const widthTextBottom = createSvgElement("text", {
-    x: x + width / 2,
-    y: y + height + 14,
-    class: "measurement-text",
-    "text-anchor": "middle",
-  });
-  widthTextBottom.textContent = `${width}px`;
-
-  const heightTextLeft = createSvgElement("text", {
-    x: x - 10,
-    y: y + height / 2,
-    class: "measurement-text",
-    "text-anchor": "end",
-    "dominant-baseline": "middle",
-  });
-  heightTextLeft.textContent = `${height}px`;
-
-  const heightTextRight = createSvgElement("text", {
-    x: x + width + 10,
-    y: y + height / 2,
-    class: "measurement-text",
-    "text-anchor": "start",
-    "dominant-baseline": "middle",
-  });
-  heightTextRight.textContent = `${height}px`;
-
-  overlayLayer.append(widthTextTop, widthTextBottom, heightTextLeft, heightTextRight);
+  if (draggingRight) {
+    const heightTextLeft = createSvgElement("text", {
+      x: x - 10,
+      y: y + height / 2,
+      class: "measurement-text",
+      "text-anchor": "end",
+      "dominant-baseline": "middle",
+    });
+    heightTextLeft.textContent = `${height}`;
+    overlayLayer.append(heightTextLeft);
+  } else {
+    const heightTextRight = createSvgElement("text", {
+      x: x + width + 10,
+      y: y + height / 2,
+      class: "measurement-text",
+      "text-anchor": "start",
+      "dominant-baseline": "middle",
+    });
+    heightTextRight.textContent = `${height}`;
+    overlayLayer.append(heightTextRight);
+  }
 }
 
 function createTextBlock(content, x, y, attrs = {}) {

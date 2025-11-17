@@ -173,3 +173,10 @@ body {
   marker-end: url(#arrow-head);
   stroke-dasharray: 5 4;
 }
+
+.snap-point {
+  fill: #3f51b5;
+  stroke: #fff;
+  stroke-width: 2;
+  pointer-events: none;
+}
