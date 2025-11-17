@@ -25,6 +25,7 @@ const state = {
   pendingCreation: null,
   interaction: null,
   measurement: null,
+  clipboard: null,
 };
 
 toolButtons.forEach((button) => {
@@ -49,8 +50,36 @@ board.addEventListener("pointerup", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.metaKey || event.ctrlKey) return;
   if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+  if ((event.metaKey || event.ctrlKey) && event.key === "c") {
+    if (state.selection) {
+      const shape = findShape(state.selection.id);
+      if (shape) {
+        state.clipboard = JSON.parse(JSON.stringify(shape));
+        event.preventDefault();
+      }
+    }
+    return;
+  }
+
+  if ((event.metaKey || event.ctrlKey) && event.key === "v") {
+    if (state.clipboard) {
+      const newShape = JSON.parse(JSON.stringify(state.clipboard));
+      newShape.id = `${newShape.type}-${idCounter++}`;
+      if (newShape.x !== undefined) {
+        newShape.x += 20;
+        newShape.y += 20;
+      }
+      state.shapes.push(newShape);
+      state.selection = { id: newShape.id, handle: "center" };
+      render();
+      event.preventDefault();
+    }
+    return;
+  }
+
+  if (event.metaKey || event.ctrlKey) return;
 
   if (event.key === "Escape") {
     cancelInteractions();
@@ -107,6 +136,21 @@ function handlePointerDown(event) {
     return;
   }
 
+  if (state.mode === "rectangle") {
+    startRectangleCreation(snapped);
+    return;
+  }
+
+  if (state.mode === "arrow") {
+    startArrowCreation(snapped, event);
+    return;
+  }
+
+  if (state.mode === "text") {
+    startTextCreation(snapped);
+    return;
+  }
+
   const shapeElement = findShapeElement(event.target);
   if (shapeElement) {
     const shapeId = shapeElement.dataset.shapeId;
@@ -116,21 +160,6 @@ function handlePointerDown(event) {
     if (shape.type === "rectangle" && state.mode === "select") {
       startMoveInteraction(shape, snapped);
     }
-    return;
-  }
-
-  if (state.mode === "rectangle") {
-    startRectangleCreation(snapped);
-    return;
-  }
-
-  if (state.mode === "arrow") {
-    startArrowCreation(snapped);
-    return;
-  }
-
-  if (state.mode === "text") {
-    startTextCreation(snapped);
     return;
   }
 
@@ -151,6 +180,8 @@ function handlePointerMove(event) {
       render();
     } else if (state.pendingCreation.tool === "arrow") {
       state.pendingCreation.current = snapped;
+      const endShape = findShapeAtPoint(event);
+      state.pendingCreation.endShapeId = endShape?.type === "rectangle" ? endShape.id : null;
       render();
     } else if (state.pendingCreation.tool === "text") {
       state.pendingCreation.current = snapped;
@@ -168,6 +199,16 @@ function handlePointerMove(event) {
 }
 
 function handlePointerUp() {
+  if (state.pendingCreation) {
+    if (state.pendingCreation.tool === "rectangle") {
+      finalizeRectangle();
+      return;
+    } else if (state.pendingCreation.tool === "arrow") {
+      finalizeArrow();
+      return;
+    }
+  }
+
   if (state.interaction) {
     state.measurement = null;
     state.interaction = null;
@@ -183,18 +224,12 @@ function cancelInteractions() {
 }
 
 function startRectangleCreation(point) {
-  if (!state.pendingCreation) {
-    state.pendingCreation = {
-      tool: "rectangle",
-      start: point,
-      current: point,
-    };
-    render();
-    return;
-  }
-
-  state.pendingCreation.current = point;
-  finalizeRectangle();
+  state.pendingCreation = {
+    tool: "rectangle",
+    start: point,
+    current: point,
+  };
+  render();
 }
 
 function finalizeRectangle() {
@@ -242,23 +277,20 @@ function updateMeasurementWithPending() {
   state.measurement = { x, y, width, height };
 }
 
-function startArrowCreation(point) {
-  if (!state.pendingCreation) {
-    state.pendingCreation = {
-      tool: "arrow",
-      start: point,
-      current: point,
-    };
-    render();
-    return;
-  }
-
-  state.pendingCreation.current = point;
-  finalizeArrow();
+function startArrowCreation(point, event) {
+  const startShape = findShapeAtPoint(event);
+  state.pendingCreation = {
+    tool: "arrow",
+    start: point,
+    current: point,
+    startShapeId: startShape?.type === "rectangle" ? startShape.id : null,
+    startEvent: event,
+  };
+  render();
 }
 
 function finalizeArrow() {
-  const { start, current } = state.pendingCreation;
+  const { start, current, startShapeId, endShapeId } = state.pendingCreation;
   const samePoint = start.x === current.x && start.y === current.y;
   if (samePoint) {
     state.pendingCreation = null;
@@ -273,6 +305,8 @@ function finalizeArrow() {
     y1: start.y,
     x2: current.x,
     y2: current.y,
+    startShapeId: startShapeId || null,
+    endShapeId: endShapeId || null,
   };
 
   state.shapes.push(arrow);
@@ -457,11 +491,48 @@ function findShapeElement(target) {
   return target.closest?.("[data-shape-id]");
 }
 
+function findShapeAtPoint(event) {
+  const shapeElement = findShapeElement(event.target);
+  if (shapeElement) {
+    const shapeId = shapeElement.dataset.shapeId;
+    return findShape(shapeId);
+  }
+  return null;
+}
+
+function getConnectionPoint(shape, point) {
+  if (!shape || shape.type !== "rectangle") return point;
+
+  const cx = shape.x + shape.width / 2;
+  const cy = shape.y + shape.height / 2;
+
+  const dx = point.x - cx;
+  const dy = point.y - cy;
+
+  const angle = Math.atan2(dy, dx);
+  const absAngle = Math.abs(angle);
+
+  const halfWidth = shape.width / 2;
+  const halfHeight = shape.height / 2;
+
+  if (absAngle < Math.atan2(halfHeight, halfWidth)) {
+    return { x: shape.x + shape.width, y: cy };
+  } else if (absAngle > Math.PI - Math.atan2(halfHeight, halfWidth)) {
+    return { x: shape.x, y: cy };
+  } else if (angle > 0) {
+    return { x: cx, y: shape.y + shape.height };
+  } else {
+    return { x: cx, y: shape.y };
+  }
+}
+
 function getBoardPoint(event) {
-  const bounds = board.getBoundingClientRect();
-  const x = event.clientX - bounds.left;
-  const y = event.clientY - bounds.top;
-  return { x, y };
+  const svg = board;
+  const pt = svg.createSVGPoint();
+  pt.x = event.clientX;
+  pt.y = event.clientY;
+  const svgP = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: svgP.x, y: svgP.y };
 }
 
 function snap(value) {
@@ -562,16 +633,39 @@ function renderRectangle(rect) {
 }
 
 function renderArrow(arrow) {
+  let x1 = arrow.x1;
+  let y1 = arrow.y1;
+  let x2 = arrow.x2;
+  let y2 = arrow.y2;
+
+  if (arrow.startShapeId) {
+    const startShape = findShape(arrow.startShapeId);
+    if (startShape) {
+      const connPoint = getConnectionPoint(startShape, { x: arrow.x2, y: arrow.y2 });
+      x1 = connPoint.x;
+      y1 = connPoint.y;
+    }
+  }
+
+  if (arrow.endShapeId) {
+    const endShape = findShape(arrow.endShapeId);
+    if (endShape) {
+      const connPoint = getConnectionPoint(endShape, { x: arrow.x1, y: arrow.y1 });
+      x2 = connPoint.x;
+      y2 = connPoint.y;
+    }
+  }
+
   const group = createSvgElement("g", {
     class: `shape-arrow${state.selection?.id === arrow.id ? " selected" : ""}`,
     "data-shape-id": arrow.id,
   });
 
   const line = createSvgElement("line", {
-    x1: arrow.x1,
-    y1: arrow.y1,
-    x2: arrow.x2,
-    y2: arrow.y2,
+    x1,
+    y1,
+    x2,
+    y2,
   });
 
   group.append(line);
@@ -617,29 +711,29 @@ function renderRectangleHandles(rect) {
   const edges = [
     {
       x: rect.x + rect.width / 2 - 15,
-      y: rect.y - 4,
+      y: rect.y - 2,
       width: 30,
-      height: 8,
+      height: 4,
       handle: "edge-top",
     },
     {
       x: rect.x + rect.width / 2 - 15,
-      y: rect.y + rect.height - 4,
+      y: rect.y + rect.height - 2,
       width: 30,
-      height: 8,
+      height: 4,
       handle: "edge-bottom",
     },
     {
-      x: rect.x - 4,
+      x: rect.x - 2,
       y: rect.y + rect.height / 2 - 15,
-      width: 8,
+      width: 4,
       height: 30,
       handle: "edge-left",
     },
     {
-      x: rect.x + rect.width - 4,
+      x: rect.x + rect.width - 2,
       y: rect.y + rect.height / 2 - 15,
-      width: 8,
+      width: 4,
       height: 30,
       handle: "edge-right",
     },
