@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagram Editor - Draw.io Clone</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-section">
+                <h3>Tools</h3>
+                <button class="tool-btn active" data-tool="select" title="Select (V)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M3 3 L3 17 L8 12 L11 16 L13 15 L10 11 L16 11 Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="rectangle" title="Rectangle (R)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <rect x="3" y="5" width="14" height="10" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="circle" title="Circle (C)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="diamond" title="Diamond (D)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M10 3 L17 10 L10 17 L3 10 Z" fill="none" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="text" title="Text (T)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <text x="10" y="15" text-anchor="middle" font-size="16" fill="currentColor">T</text>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="line" title="Line (L)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="arrow" title="Arrow (A)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" stroke-width="2"/>
+                        <path d="M17 3 L13 5 L15 7 Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Actions</h3>
+                <button class="action-btn" id="delete-btn" title="Delete (Del)">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M6 7 L6 17 L14 17 L14 7 M4 5 L16 5 M8 3 L12 3" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    Delete
+                </button>
+                <button class="action-btn" id="clear-btn" title="Clear Canvas">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <line x1="5" y1="5" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+                        <line x1="15" y1="5" x2="5" y2="15" stroke="currentColor" stroke-width="2"/>
+                    </svg>
+                    Clear
+                </button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>File</h3>
+                <button class="action-btn" id="save-btn">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M4 4 L4 16 L16 16 L16 4 M6 4 L6 8 L14 8 L14 4 M12 12 L12 16" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    Save JSON
+                </button>
+                <button class="action-btn" id="load-btn">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <path d="M4 8 L4 16 L16 16 L16 8 M10 4 L10 12 M7 9 L10 12 L13 9" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    Load JSON
+                </button>
+                <input type="file" id="load-input" accept=".json" style="display: none;">
+                <button class="action-btn" id="export-png-btn">
+                    <svg width="20" height="20" viewBox="0 0 20 20">
+                        <rect x="4" y="4" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+                    </svg>
+                    Export PNG
+                </button>
+            </div>
+
+            <div class="toolbar-section">
+                <h3>Style</h3>
+                <label>
+                    Fill:
+                    <input type="color" id="fill-color" value="#e3f2fd">
+                </label>
+                <label>
+                    Stroke:
+                    <input type="color" id="stroke-color" value="#1976d2">
+                </label>
+                <label>
+                    Width:
+                    <input type="number" id="stroke-width" value="2" min="1" max="10">
+                </label>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
